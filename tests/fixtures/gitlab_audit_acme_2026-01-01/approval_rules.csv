@@ -1,0 +1,3 @@
+project,rule,rule_type,approvals_required,protected_branches,eligible_approvers
+acme/app,Default,regular,1,main,alice
+acme/site,License-Check,regular,0,(all),(none)

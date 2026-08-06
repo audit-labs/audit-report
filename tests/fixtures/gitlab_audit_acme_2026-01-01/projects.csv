@@ -1,0 +1,3 @@
+id,name,path,visibility,default_branch,archived,web_url
+1,app,acme/app,private,main,False,https://gitlab.com/acme/app
+2,site,acme/site,public,main,False,https://gitlab.com/acme/site

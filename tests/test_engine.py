@@ -70,6 +70,32 @@ def test_github_fixture_findings():
     assert findings["github.branch.require-reviews"].status == PASS
 
 
+def test_gitlab_fixture_findings():
+    findings = _run("gitlab_audit_acme_2026-01-01", "gitlab.yaml")
+
+    # 'site' allows force push on a protected branch.
+    force = findings["gitlab.branch.no-force-push"]
+    assert force.status == FAIL
+    assert force.evidence[0]["project"] == "acme/site"
+
+    # 'site' does not require code owner approval.
+    assert findings["gitlab.branch.code-owner-approval"].status == FAIL
+
+    # The License-Check rule requires zero approvals.
+    approvals = findings["gitlab.approvals.require-one"]
+    assert approvals.status == FAIL
+    assert approvals.evidence[0]["rule"] == "License-Check"
+
+    # 'site' is a public project.
+    assert findings["gitlab.projects.no-public"].status == FAIL
+
+    # No password_policy.csv in the package (as on GitLab.com) -> not applicable.
+    assert findings["gitlab.password-policy"].status == NOT_APPLICABLE
+
+    # An audit event with an action is present -> logging is evidenced.
+    assert findings["gitlab.audit.logging-active"].status == PASS
+
+
 def test_not_applicable_when_table_absent(tmp_path):
     (tmp_path / "aws_audit_x_2026-01-01").mkdir()
     pkg_dir = tmp_path / "aws_audit_x_2026-01-01"

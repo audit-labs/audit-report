@@ -1,0 +1,101 @@
+# Ruleset: GitLab
+#
+# Evaluated against an audit-tools GitLab evidence package
+# (gitlab_audit_<group>_<date>/). Note two GitLab-specific facts that shape
+# these rules:
+#
+#   * branch_protections lists one row *per protected branch* — there is no
+#     "protected" boolean as on GitHub. A row's existence means the branch is
+#     protected; the checks below test how strong that protection is.
+#   * audit-tools omits a CSV entirely when a collector returns no rows, so an
+#     absent table reports as "not applicable", not "pass". A rule can only
+#     speak to data that was actually collected.
+platform: gitlab
+
+rules:
+  - id: gitlab.branch.no-force-push
+    title: Protected branches disallow force push
+    table: branch_protections
+    severity: high
+    controls: [SOC2:CC8.1, ISO:A.8.32, NIST:CM-6]
+    rationale: >
+      Allowing force push to a protected branch lets history be rewritten with
+      no trace, defeating the change-management record the protection exists to
+      provide.
+    remediation: Disable "Allow force push" on protected branches.
+    check:
+      type: fail_rows_where
+      when: {column: allow_force_push, op: is_true}
+
+  - id: gitlab.branch.code-owner-approval
+    title: Protected branches require code owner approval
+    table: branch_protections
+    severity: low
+    controls: [SOC2:CC8.1, ISO:A.8.32]
+    rationale: >
+      Code owner approval routes changes to the people accountable for the
+      affected files. It is a stricter posture than a plain review requirement
+      and is not needed everywhere — hence low severity.
+    remediation: Enable "Require approval from code owners" on protected branches where ownership matters.
+    check:
+      type: fail_rows_where
+      when: {column: code_owner_approval_required, op: is_false}
+
+  - id: gitlab.approvals.require-one
+    title: Approval rules require at least one approval
+    table: approval_rules
+    severity: medium
+    controls: [SOC2:CC8.1, ISO:A.8.32, NIST:CM-6]
+    rationale: >
+      An approval rule that requires zero approvals contributes nothing to
+      segregation of duties — a change can merge with no second person signing
+      off.
+    remediation: Set the required number of approvals to at least one on merge-blocking rules.
+    check:
+      type: fail_rows_where
+      when: {column: approvals_required, op: lt, value: 1}
+
+  - id: gitlab.projects.no-public
+    title: Projects are not publicly visible
+    table: projects
+    severity: medium
+    controls: [SOC2:CC6.3, ISO:A.5.15, NIST:AC-6]
+    rationale: >
+      A public project exposes its source and history to anyone on the
+      internet. That is sometimes intended (open source) but should be a
+      deliberate, reviewed decision rather than a default.
+    remediation: Set project visibility to private or internal unless public exposure is intended and approved.
+    check:
+      type: fail_rows_where
+      when: {column: visibility, op: equals, value: public}
+
+  - id: gitlab.password-policy
+    title: Instance password policy meets baseline strength
+    table: password_policy
+    severity: medium
+    controls: [ISO:A.5.17, NIST:IA-5]
+    rationale: >
+      A weak password policy undermines every password-based control. This table
+      is only present for self-hosted instances audited with an admin token; on
+      GitLab.com it is absent and this rule reports as not applicable.
+    remediation: Require a minimum length of 12 and mandate numbers and symbols in the instance settings.
+    check:
+      type: assert_row
+      require:
+        - {column: minimum_password_length, op: gte, value: 12}
+        - {column: password_number_required, op: is_true}
+        - {column: password_symbol_required, op: is_true}
+
+  - id: gitlab.audit.logging-active
+    title: Audit event logging is producing records
+    table: audit_events
+    severity: medium
+    controls: [SOC2:CC7.2, ISO:A.8.15, NIST:AU-2]
+    rationale: >
+      The presence of audit events is direct evidence that GitLab is recording
+      security-relevant activity. Absence here means no events were collected —
+      reported as not applicable rather than as a pass or a failure.
+    remediation: Confirm audit events are enabled and retained for the group and its projects.
+    check:
+      type: require_any_row
+      when: {column: action, op: not_empty}

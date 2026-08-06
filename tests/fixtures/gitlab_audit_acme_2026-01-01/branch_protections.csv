@@ -1,0 +1,3 @@
+project,branch,push_access,merge_access,allow_force_push,code_owner_approval_required
+acme/app,main,No one,Maintainer,False,True
+acme/site,main,Maintainer,Developer,True,False

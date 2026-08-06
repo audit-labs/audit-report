@@ -1,0 +1,2 @@
+created_at,action,member_id,target,author_id,entity_type
+2026-01-01T00:00:00Z,add_user,42,bob,1,Group

@@ -71,6 +71,7 @@ python -m audit_report ./output/aws_audit_default_2026-07-29
 | --- | --- | --- |
 | AWS | `aws_audit_*` | Console-user MFA, access-key rotation, root MFA & keys, password policy, open SSH, public S3, CloudTrail logging |
 | GitHub | `github_audit_*` | Org 2FA, base permission, secret-scanning push protection, default-branch protection, required reviews |
+| GitLab | `gitlab_audit_*` | Force-push on protected branches, code-owner approval, approval-rule strength, public projects, instance password policy, audit logging |
 
 ## Writing your own rules
 
