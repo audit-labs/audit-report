@@ -19,7 +19,7 @@ _STATUS_LABEL = {PASS: "PASS", FAIL: "FAIL", NOT_APPLICABLE: "N/A"}
 _STATUS_CLASS = {PASS: "pass", FAIL: "fail", NOT_APPLICABLE: "na"}
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
-_CSS = """
+CSS = """
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
 body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -161,5 +161,5 @@ def render(report: Report) -> str:
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width, initial-scale=1'>"
         f"<title>Evidence Report — {escape(pkg.subject)}</title>"
-        f"<style>{_CSS}</style></head><body><main>{body}</main></body></html>\n"
+        f"<style>{CSS}</style></head><body><main>{body}</main></body></html>\n"
     )

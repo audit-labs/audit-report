@@ -41,6 +41,28 @@ audit-report ./output/github_audit_acme_2026-07-29 --format md,html,json --out r
 audit-report ./output/aws_audit_prod_2026-07-29 --fail-on high --out report/
 ```
 
+### Diff mode — compare two packages
+
+Pass `--baseline` to report how a package **drifted** from an earlier one. Both
+are evaluated with the same ruleset; the report classifies each rule as
+regressed, fixed, drifted (an ongoing failure whose evidence rows changed),
+changed, or unchanged — and shows exactly which evidence rows appeared or
+disappeared.
+
+```bash
+# How did prod change between two audit runs?
+audit-report ./output/aws_audit_prod_2026-07-29 \
+  --baseline ./output/aws_audit_prod_2026-06-29 \
+  --format md,html --out drift/
+
+# Fail CI if this change regressed any high-severity control
+audit-report ./output/aws_audit_prod_2026-07-29 \
+  --baseline ./output/aws_audit_prod_2026-06-29 --fail-on high
+```
+
+In diff mode `--fail-on` gates on **regressions** at or above the given
+severity, and output files are named `diff.*` instead of `report.*`.
+
 You can also run it without installing:
 
 ```bash
@@ -51,10 +73,11 @@ python -m audit_report ./output/aws_audit_default_2026-07-29
 
 | Flag | Description |
 | --- | --- |
+| `--baseline PATH` | Diff mode: report how `PACKAGE` drifted from this earlier package. |
 | `--ruleset PATH` | Use a specific ruleset instead of the bundled one for the detected platform. |
 | `--format md,html,json` | One or more output formats (default: `md`). |
 | `--out DIR` | Write `report.<ext>` files into `DIR`. Without it, the first format prints to stdout. |
-| `--fail-on low\|medium\|high\|none` | Exit non-zero when a failing finding meets this severity (default: `none`). |
+| `--fail-on low\|medium\|high\|none` | Exit non-zero when a failing finding — or, in diff mode, a regression — meets this severity (default: `none`). |
 
 ## What a report contains
 
