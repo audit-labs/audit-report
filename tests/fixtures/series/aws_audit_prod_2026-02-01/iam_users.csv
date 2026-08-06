@@ -1,0 +1,2 @@
+user,mfa_enabled,access_keys,oldest_key_age_days,console_password,password_last_used,created
+bob,True,1,400,True,2026-01-15T00:00:00+00:00,2025-02-01T00:00:00+00:00

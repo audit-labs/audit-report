@@ -1,0 +1,2 @@
+root_mfa_enabled,root_access_keys_present,root_signing_certs_present,mfa_devices,users,groups,roles,policies
+True,True,False,1,1,0,3,0

@@ -29,6 +29,7 @@ class Package:
     path: Path
     platform: str
     subject: str  # the org / profile the audit was run against
+    date: str = ""  # trailing YYYY-MM-DD from the dir name, if present
     tables: dict[str, Table] = field(default_factory=dict)
 
     def table(self, name: str) -> Table:
@@ -61,6 +62,12 @@ def _looks_like_date(token: str) -> bool:
     return len(bits) == 3 and all(b.isdigit() for b in bits)
 
 
+def package_date(dir_name: str) -> str:
+    """Return the trailing ``YYYY-MM-DD`` in a package dir name, or ''."""
+    tail = dir_name.rsplit("_", 1)[-1]
+    return tail if _looks_like_date(tail) else ""
+
+
 def load_package(path: str | Path) -> Package:
     """Load every ``*.csv`` in *path* into a :class:`Package`.
 
@@ -80,4 +87,10 @@ def load_package(path: str | Path) -> Package:
     if not tables:
         raise ValueError(f"no CSV files found in {directory}")
 
-    return Package(path=directory, platform=platform, subject=subject, tables=tables)
+    return Package(
+        path=directory,
+        platform=platform,
+        subject=subject,
+        date=package_date(directory.name),
+        tables=tables,
+    )

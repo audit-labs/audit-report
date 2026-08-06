@@ -1,0 +1,2 @@
+name,home_region,multi_region,log_file_validation,is_logging,s3_bucket
+main,us-east-1,True,True,True,acme-logs

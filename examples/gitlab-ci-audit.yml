@@ -1,0 +1,33 @@
+# Example GitLab CI configuration: collect evidence, then report on it.
+#
+# Copy into .gitlab-ci.yml (or include it) in the project you want to audit.
+# It produces a control-mapped report as a job artifact and fails the pipeline
+# if any high-severity control is not supported.
+#
+# Set CI/CD variables GITLAB_TOKEN (read-only) and GITLAB_GROUP for the group
+# you audit.
+
+stages: [audit]
+
+compliance-evidence:
+  stage: audit
+  image: python:3.12-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web" # manual "Run pipeline"
+  variables:
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  before_script:
+    - pip install "audit-report @ git+https://github.com/audit-labs/audit-report"
+    - pip install "audit-tools @ git+https://github.com/audit-labs/audit-tools"
+  script:
+    # Produces ./output/gitlab_audit_<group>_<date>/
+    - python -m audit_tools.gitlab --out ./output || python audit.py --out ./output
+    - PKG=$(ls -d ./output/*_audit_* | sort | tail -n1)
+    - audit-report "$PKG" --format md,html,json --out ./report
+    - audit-report "$PKG" --fail-on high
+  artifacts:
+    when: always
+    paths:
+      - report/
+    expire_in: 90 days

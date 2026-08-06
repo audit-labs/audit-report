@@ -63,6 +63,25 @@ audit-report ./output/aws_audit_prod_2026-07-29 \
 In diff mode `--fail-on` gates on **regressions** at or above the given
 severity, and output files are named `diff.*` instead of `report.*`.
 
+### Trend mode — track controls over time
+
+Pass `--trend` and point at a **folder of dated packages** (for example
+audit-tools' `output/`). Every package in the series is evaluated with the same
+ruleset and laid out as a timeline — one row per rule, one column per date — so
+you can watch a control drift in and out of compliance.
+
+```bash
+# Heatmap of every control across all retained prod packages
+audit-report ./output --trend --format html,json --out trend/
+
+# Disambiguate when the folder holds more than one series
+audit-report ./output --trend --subject prod --out trend/
+```
+
+The series must share one platform and subject (use `--subject` to pick one) and
+contain at least two packages. In trend mode `--fail-on` reflects the **latest**
+package, so it can double as a snapshot gate. Output files are named `trend.*`.
+
 You can also run it without installing:
 
 ```bash
@@ -74,6 +93,8 @@ python -m audit_report ./output/aws_audit_default_2026-07-29
 | Flag | Description |
 | --- | --- |
 | `--baseline PATH` | Diff mode: report how `PACKAGE` drifted from this earlier package. |
+| `--trend` | Trend mode: treat `PACKAGE` as a folder of dated packages and chart each rule over time. |
+| `--subject NAME` | In trend mode, pick one subject when the folder holds several series. |
 | `--ruleset PATH` | Use a specific ruleset instead of the bundled one for the detected platform. |
 | `--format md,html,json` | One or more output formats (default: `md`). |
 | `--out DIR` | Write `report.<ext>` files into `DIR`. Without it, the first format prints to stdout. |
@@ -134,6 +155,18 @@ rules:
 `is_true`, `is_false`, `in`, `not_in`, `gt`, `gte`, `lt`, `lte`, `empty`,
 `not_empty`. Control codes referenced by a rule must exist in
 [`audit_report/catalog.py`](audit_report/catalog.py).
+
+## Continuous integration
+
+Run it on a schedule or in a pipeline to keep evidence current and gate on
+regressions. See [docs/ci.md](docs/ci.md) and the ready-to-copy examples:
+
+- [`examples/github-actions-audit.yml`](examples/github-actions-audit.yml)
+- [`examples/gitlab-ci-audit.yml`](examples/gitlab-ci-audit.yml)
+
+The `--fail-on` exit code (`1` = a finding/regression met the threshold, `2` =
+usage error) lets a workflow separate "the audit found a problem" from "the job
+is misconfigured".
 
 ## Development
 

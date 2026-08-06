@@ -1,0 +1,66 @@
+# Example GitHub Actions workflow: collect evidence, then report on it.
+#
+# Copy into .github/workflows/audit.yml in the repository you want to audit and
+# adjust the collection step to your platform. It runs on a schedule and on
+# demand, produces a control-mapped report, and fails the run if a high-severity
+# control regresses against the previous package committed to the repo.
+#
+# Requires two org/repo secrets for the GitHub collector: AUDIT_GITHUB_TOKEN
+# (a read-only token for the org you audit) and the org name in AUDIT_ORG.
+
+name: compliance-evidence
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # every Monday 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          # The reporter:
+          pip install "audit-report @ git+https://github.com/audit-labs/audit-report"
+          # The collector (audit-tools ships CLIs per platform):
+          pip install "audit-tools @ git+https://github.com/audit-labs/audit-tools"
+
+      - name: Collect evidence (GitHub example)
+        env:
+          GITHUB_TOKEN: ${{ secrets.AUDIT_GITHUB_TOKEN }}
+          GITHUB_ORG: ${{ secrets.AUDIT_ORG }}
+        run: |
+          # Produces ./output/github_audit_<org>_<date>/
+          python -m audit_tools.github --out ./output || \
+            python audit.py --out ./output   # fall back to the script entrypoint
+
+      - name: Locate the newest package
+        id: pkg
+        run: echo "dir=$(ls -d ./output/*_audit_* | sort | tail -n1)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate evidence report
+        run: |
+          audit-report "${{ steps.pkg.outputs.dir }}" \
+            --format md,html,json --out ./report
+
+      - name: Fail on any high-severity finding
+        run: audit-report "${{ steps.pkg.outputs.dir }}" --fail-on high
+
+      - name: Publish the report as a build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-report
+          path: report/
+          retention-days: 90

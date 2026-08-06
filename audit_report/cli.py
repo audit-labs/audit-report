@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import __version__, diff, reporters
+from . import __version__, diff, reporters, trend
 from .engine import FAIL, evaluate
 from .loader import load_package
 from .rules import load_ruleset
@@ -37,6 +37,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--baseline",
         help="path to an earlier package; diff mode reports how PACKAGE drifted from it",
+    )
+    parser.add_argument(
+        "--trend",
+        action="store_true",
+        help="trend mode: treat PACKAGE as a folder of dated packages and chart each rule over time",
+    )
+    parser.add_argument(
+        "--subject",
+        help="in trend mode, pick one subject when the folder holds several series",
     )
     parser.add_argument(
         "--ruleset",
@@ -118,6 +127,31 @@ def _run_diff(args, package, ruleset, formats: list[str]) -> int:
     return 1 if diff.has_regression(report, args.fail_on) else 0
 
 
+def _run_trend(args, formats: list[str]) -> int:
+    try:
+        platform, subject, paths = trend.discover(args.package, args.subject)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    ruleset_path = Path(args.ruleset) if args.ruleset else _default_ruleset(platform)
+    ruleset = load_ruleset(ruleset_path)
+
+    packages = [load_package(p) for p in paths]
+    findings_per = [evaluate(pkg, ruleset) for pkg in packages]
+    report = trend.build_trend(packages, findings_per)
+
+    _emit(lambda fmt: trend.render(report, fmt), formats, args.out, "trend")
+
+    fails = report.fails_per_date()
+    print(
+        f"{platform}/{subject}: {len(paths)} packages, "
+        f"failing {fails[0]} → {fails[-1]}",
+        file=sys.stderr,
+    )
+    return _exit_code(trend.latest_findings(findings_per), args.fail_on)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
 
@@ -126,6 +160,13 @@ def main(argv: list[str] | None = None) -> int:
     if not formats or unknown:
         print(f"error: unknown format(s): {', '.join(unknown) or '(none given)'}", file=sys.stderr)
         return 2
+
+    if args.trend and args.baseline:
+        print("error: --trend and --baseline cannot be combined", file=sys.stderr)
+        return 2
+
+    if args.trend:
+        return _run_trend(args, formats)
 
     try:
         package = load_package(args.package)
