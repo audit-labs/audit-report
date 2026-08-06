@@ -12,10 +12,29 @@ Ready-to-copy starting points:
 - [`examples/github-actions-audit.yml`](../examples/github-actions-audit.yml)
 - [`examples/gitlab-ci-audit.yml`](../examples/gitlab-ci-audit.yml)
 
-> The collection step in the examples shows both a module entrypoint
-> (`python -m audit_tools.github`) and a script fallback (`python audit.py`).
-> Use whichever your installed `audit-tools` exposes; everything downstream only
-> needs the `./output/<platform>_audit_<subject>_<date>/` directory it writes.
+> `audit-tools` is not on PyPI — it is a set of per-platform scripts. Check the
+> repo out (or clone it) and run `applications/<platform>/audit.py` directly;
+> Python puts the script's own directory on `sys.path`, so no `cd` is needed.
+> Pass an absolute `--out` so every platform's package lands in one folder.
+> Everything downstream only needs the
+> `<out>/<platform>_audit_<subject>_<date>/` directory it writes.
+
+## Exact collection commands
+
+Install `audit-tools`' dependencies once (`pip install -r audit-tools/requirements.txt`),
+export the platform's credentials, then:
+
+```bash
+# AWS — credentials come from the standard AWS chain (env vars, profile, OIDC role)
+python audit-tools/applications/aws/audit.py --out "$PWD/output"
+
+# GitHub — needs GITHUB_TOKEN (read-only) in the environment
+python audit-tools/applications/github/audit.py --org "$ORG" --out "$PWD/output"
+
+# GitLab — needs GITLAB_TOKEN (read_api) in the environment
+python audit-tools/applications/gitlab/audit.py \
+  --group "$GROUP" --url "$API_V4_URL" --out "$PWD/output"
+```
 
 ## Gating strategies
 

@@ -1,12 +1,18 @@
 # Example GitHub Actions workflow: collect evidence, then report on it.
 #
-# Copy into .github/workflows/audit.yml in the repository you want to audit and
-# adjust the collection step to your platform. It runs on a schedule and on
-# demand, produces a control-mapped report, and fails the run if a high-severity
-# control regresses against the previous package committed to the repo.
+# Copy into .github/workflows/audit.yml in a repository owned by the org you
+# want to audit and adjust as needed. It runs on a schedule and on demand,
+# produces a control-mapped report, and fails the run if any high-severity
+# control is unsupported.
 #
-# Requires two org/repo secrets for the GitHub collector: AUDIT_GITHUB_TOKEN
-# (a read-only token for the org you audit) and the org name in AUDIT_ORG.
+# audit-tools is not published to PyPI — it is a set of per-platform scripts, so
+# this checks the repo out and runs applications/github/audit.py directly.
+# audit-report *is* pip-installable from git.
+#
+# Required repository/org secret:
+#   AUDIT_GITHUB_TOKEN  a read-only token with org + security-events scope
+# Required variable (Settings > Variables), or hard-code below:
+#   AUDIT_ORG           the organization login to audit
 
 name: compliance-evidence
 
@@ -22,32 +28,34 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out audit-tools (the collector)
+        uses: actions/checkout@v4
+        with:
+          repository: audit-labs/audit-tools
+          path: audit-tools
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install tools
+      - name: Install collector deps and the reporter
         run: |
           python -m pip install --upgrade pip
-          # The reporter:
+          pip install -r audit-tools/requirements.txt
           pip install "audit-report @ git+https://github.com/audit-labs/audit-report"
-          # The collector (audit-tools ships CLIs per platform):
-          pip install "audit-tools @ git+https://github.com/audit-labs/audit-tools"
 
-      - name: Collect evidence (GitHub example)
+      - name: Collect GitHub evidence
         env:
           GITHUB_TOKEN: ${{ secrets.AUDIT_GITHUB_TOKEN }}
-          GITHUB_ORG: ${{ secrets.AUDIT_ORG }}
+          GITHUB_ORG: ${{ vars.AUDIT_ORG }}
         run: |
-          # Produces ./output/github_audit_<org>_<date>/
-          python -m audit_tools.github --out ./output || \
-            python audit.py --out ./output   # fall back to the script entrypoint
+          # Writes $GITHUB_WORKSPACE/output/github_audit_<org>_<date>/
+          python audit-tools/applications/github/audit.py \
+            --org "$GITHUB_ORG" --out "$GITHUB_WORKSPACE/output"
 
       - name: Locate the newest package
         id: pkg
-        run: echo "dir=$(ls -d ./output/*_audit_* | sort | tail -n1)" >> "$GITHUB_OUTPUT"
+        run: echo "dir=$(ls -d "$GITHUB_WORKSPACE"/output/*_audit_* | sort | tail -n1)" >> "$GITHUB_OUTPUT"
 
       - name: Generate evidence report
         run: |

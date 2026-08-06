@@ -1,11 +1,17 @@
 # Example GitLab CI configuration: collect evidence, then report on it.
 #
-# Copy into .gitlab-ci.yml (or include it) in the project you want to audit.
-# It produces a control-mapped report as a job artifact and fails the pipeline
-# if any high-severity control is not supported.
+# Copy into .gitlab-ci.yml (or `include:` it) in a project under the group you
+# want to audit. It produces a control-mapped report as a job artifact and fails
+# the pipeline if any high-severity control is unsupported.
 #
-# Set CI/CD variables GITLAB_TOKEN (read-only) and GITLAB_GROUP for the group
-# you audit.
+# audit-tools is not published to PyPI — it is a set of per-platform scripts, so
+# this clones the repo and runs applications/gitlab/audit.py directly.
+# audit-report *is* pip-installable from git.
+#
+# Required CI/CD variable (Settings > CI/CD > Variables):
+#   GITLAB_TOKEN   a token with read_api scope for the group
+# GITLAB_GROUP defaults to this project's top-level group and the API URL to the
+# instance running the pipeline, so it audits "where it lives" out of the box.
 
 stages: [audit]
 
@@ -17,13 +23,20 @@ compliance-evidence:
     - if: $CI_PIPELINE_SOURCE == "web" # manual "Run pipeline"
   variables:
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    GITLAB_GROUP: $CI_PROJECT_ROOT_NAMESPACE
   before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git
+    - git clone --depth 1 https://github.com/audit-labs/audit-tools.git
+    - pip install -r audit-tools/requirements.txt
     - pip install "audit-report @ git+https://github.com/audit-labs/audit-report"
-    - pip install "audit-tools @ git+https://github.com/audit-labs/audit-tools"
   script:
-    # Produces ./output/gitlab_audit_<group>_<date>/
-    - python -m audit_tools.gitlab --out ./output || python audit.py --out ./output
-    - PKG=$(ls -d ./output/*_audit_* | sort | tail -n1)
+    # Writes $CI_PROJECT_DIR/output/gitlab_audit_<group>_<date>/ against this
+    # instance's API ($CI_API_V4_URL is provided automatically by GitLab).
+    - >
+      python audit-tools/applications/gitlab/audit.py
+      --group "$GITLAB_GROUP" --url "$CI_API_V4_URL"
+      --out "$CI_PROJECT_DIR/output"
+    - PKG=$(ls -d "$CI_PROJECT_DIR"/output/*_audit_* | sort | tail -n1)
     - audit-report "$PKG" --format md,html,json --out ./report
     - audit-report "$PKG" --fail-on high
   artifacts:
