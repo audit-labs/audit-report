@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audit-report"
+version = "0.1.0"
+description = "Turn audit-tools evidence packages into control-mapped, auditor-ready reports."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Audit Labs" }]
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+audit-report = "audit_report.cli:main"
+
+[project.urls]
+Homepage = "https://audit-labs.dev"
+Repository = "https://github.com/audit-labs/audit-report"
+
+[tool.setuptools]
+packages = ["audit_report", "audit_report.reporters"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+# Ship the bundled rulesets inside the wheel so the CLI works after install.
+"audit_report" = ["rulesets/*.yaml"]

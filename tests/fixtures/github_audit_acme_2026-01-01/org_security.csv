@@ -1,0 +1,2 @@
+org,two_factor_required,default_repo_permission,members_can_create_repos,members_can_create_public_repos,members_can_create_pages,web_commit_signoff_required,advanced_security_for_new_repos,secret_scanning_for_new_repos,secret_scanning_push_protection_for_new_repos
+acme,True,read,True,True,True,False,True,True,True

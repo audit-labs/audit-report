@@ -1,0 +1,130 @@
+# Ruleset: AWS
+#
+# Evaluated against an audit-tools AWS evidence package
+# (aws_audit_<profile>_<date>/). Each rule names a CSV table, a check, and the
+# controls the signal is offered as evidence for. A "fail" means a setting is in
+# a state that does NOT support the control — an auditor still owns the verdict.
+platform: aws
+
+rules:
+  - id: aws.iam.console-mfa
+    title: Console users have MFA enabled
+    table: iam_users
+    severity: high
+    controls: [SOC2:CC6.1, ISO:A.5.17, NIST:IA-2]
+    rationale: >
+      A user who can sign in to the console without a second factor is a single
+      stolen password away from account access. MFA is the baseline control for
+      interactive human access.
+    remediation: Enforce MFA for all IAM users with console access, or remove their console password.
+    check:
+      type: fail_rows_where
+      when:
+        all:
+          - {column: console_password, op: is_true}
+          - {column: mfa_enabled, op: is_false}
+
+  - id: aws.iam.key-rotation
+    title: Access keys are rotated within 90 days
+    table: iam_users
+    severity: medium
+    controls: [ISO:A.5.17, NIST:IA-5]
+    rationale: >
+      Long-lived access keys widen the window in which a leaked credential is
+      useful. Rotating keys bounds that exposure.
+    remediation: Rotate or delete access keys older than 90 days.
+    check:
+      type: fail_rows_where
+      when: {column: oldest_key_age_days, op: gt, value: 90}
+
+  - id: aws.root.mfa
+    title: Root account has MFA enabled
+    table: account_security
+    severity: high
+    controls: [SOC2:CC6.1, ISO:A.8.2, NIST:IA-2]
+    rationale: >
+      The root account can perform every action in the account and cannot be
+      restricted by IAM policy. MFA on root is a foundational control.
+    remediation: Enable a hardware or virtual MFA device on the root user.
+    check:
+      type: assert_row
+      require:
+        - {column: root_mfa_enabled, op: is_true}
+
+  - id: aws.root.no-access-keys
+    title: Root account has no access keys
+    table: account_security
+    severity: high
+    controls: [SOC2:CC6.1, ISO:A.8.2, NIST:AC-6]
+    rationale: >
+      Programmatic root access keys are unnecessary and dangerous — anything
+      root can do should be done through named, least-privilege identities.
+    remediation: Delete all access keys on the root user.
+    check:
+      type: assert_row
+      require:
+        - {column: root_access_keys_present, op: is_false}
+
+  - id: aws.iam.password-policy
+    title: Account password policy meets baseline strength
+    table: password_policy
+    severity: medium
+    controls: [ISO:A.5.17, NIST:IA-5]
+    rationale: >
+      A weak password policy undermines every password-based control. The
+      baseline here — length, complexity, and rotation — reflects common
+      hardening guidance.
+    remediation: Set a minimum length of 14, require symbols and numbers, and cap password age at 90 days.
+    check:
+      type: assert_row
+      require:
+        - {column: minimum_length, op: gte, value: 14}
+        - {column: require_symbols, op: is_true}
+        - {column: require_numbers, op: is_true}
+        - {column: max_age_days, op: lte, value: 90}
+
+  - id: aws.network.no-open-ssh
+    title: No security group exposes SSH to the internet
+    table: open_security_groups
+    severity: high
+    controls: [SOC2:CC6.6, ISO:A.8.20, NIST:SC-7]
+    rationale: >
+      SSH (port 22) reachable from 0.0.0.0/0 invites credential-stuffing and
+      exploitation of the host directly from the public internet.
+    remediation: Restrict inbound SSH to known CIDR ranges or a bastion, or use SSM Session Manager.
+    check:
+      type: fail_rows_where
+      when:
+        all:
+          - {column: open_to, op: equals, value: 0.0.0.0/0}
+          - {column: from_port, op: lte, value: 22}
+          - {column: to_port, op: gte, value: 22}
+
+  - id: aws.s3.no-public-access
+    title: No S3 bucket allows public access
+    table: s3_public_access
+    severity: high
+    controls: [SOC2:CC6.6, ISO:A.8.20, NIST:SC-7]
+    rationale: >
+      Publicly readable or writable buckets are a leading cause of data
+      exposure. audit-tools lists only buckets that permit public access, so any
+      row here is a finding.
+    remediation: Enable Block Public Access at the account and bucket level; remove public bucket policies and ACLs.
+    check:
+      type: fail_if_any_rows
+
+  - id: aws.cloudtrail.logging
+    title: A multi-region CloudTrail is actively logging
+    table: cloudtrail
+    severity: high
+    controls: [SOC2:CC7.2, ISO:A.8.15, NIST:AU-2]
+    rationale: >
+      Without an active trail there is no reliable record of account activity —
+      the evidence auditors and responders rely on simply does not exist.
+    remediation: Enable a multi-region CloudTrail with log file validation and confirm it is logging.
+    check:
+      type: require_any_row
+      when:
+        all:
+          - {column: is_logging, op: is_true}
+          - {column: multi_region, op: is_true}

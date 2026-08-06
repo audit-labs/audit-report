@@ -1,0 +1,79 @@
+# Ruleset: GitHub
+#
+# Evaluated against an audit-tools GitHub evidence package
+# (github_audit_<org>_<date>/). Complements gh-attest: same spirit of mapping
+# GitHub signals to controls, applied offline to a captured CSV package.
+platform: github
+
+rules:
+  - id: github.org.require-2fa
+    title: Organization requires two-factor authentication
+    table: org_security
+    severity: high
+    controls: [SOC2:CC6.1, ISO:A.5.17, NIST:IA-2]
+    rationale: >
+      Org-enforced 2FA raises the floor for every member at once. Without it, a
+      single member with a weak or reused password is an org-wide risk.
+    remediation: Enable "Require two-factor authentication" in the organization security settings.
+    check:
+      type: assert_row
+      require:
+        - {column: two_factor_required, op: is_true}
+
+  - id: github.org.default-permission
+    title: Base repository permission is read or less
+    table: org_security
+    severity: medium
+    controls: [SOC2:CC6.3, ISO:A.5.15, NIST:AC-6]
+    rationale: >
+      A permissive base permission (write/admin for all members) violates least
+      privilege by granting broad access that should be explicit.
+    remediation: Set the organization base permission to "read" or "none" and grant write/admin per team.
+    check:
+      type: assert_row
+      require:
+        - {column: default_repo_permission, op: in, value: [read, none]}
+
+  - id: github.org.secret-scanning
+    title: Secret scanning push protection is on for new repos
+    table: org_security
+    severity: medium
+    controls: [SOC2:CC7.1, ISO:A.5.17, NIST:CM-6]
+    rationale: >
+      Push protection stops secrets from entering history in the first place,
+      which is far cheaper than rotating a leaked credential after the fact.
+    remediation: Enable secret scanning and push protection for new repositories at the org level.
+    check:
+      type: assert_row
+      require:
+        - {column: secret_scanning_push_protection_for_new_repos, op: is_true}
+
+  - id: github.branch.default-protected
+    title: Default branches are protected
+    table: branch_protections
+    severity: high
+    controls: [SOC2:CC8.1, ISO:A.8.32, NIST:CM-6]
+    rationale: >
+      An unprotected default branch can be force-pushed or have its history
+      rewritten with no review — the change-management trail auditors expect is
+      absent.
+    remediation: Add a branch protection rule or ruleset covering the default branch of each repository.
+    check:
+      type: fail_rows_where
+      when: {column: protected, op: is_false}
+
+  - id: github.branch.require-reviews
+    title: Protected branches require at least one review
+    table: branch_protections
+    severity: medium
+    controls: [SOC2:CC8.1, ISO:A.8.32, NIST:CM-6]
+    rationale: >
+      Required review is the core segregation-of-duties control in the SDLC: no
+      change reaches the default branch without a second person approving it.
+    remediation: Require at least one approving review on the default branch.
+    check:
+      type: fail_rows_where
+      when:
+        all:
+          - {column: protected, op: is_true}
+          - {column: required_reviews, op: lt, value: 1}

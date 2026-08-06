@@ -1,0 +1,110 @@
+"""Command-line entry point for audit-report."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from . import __version__, reporters
+from .engine import FAIL, evaluate
+from .loader import load_package
+from .rules import load_ruleset
+
+# Bundled rulesets ship inside the package, one per platform.
+_RULESET_DIR = Path(__file__).resolve().parent / "rulesets"
+
+_SEVERITY_ORDER = {"low": 0, "medium": 1, "high": 2}
+
+
+def _default_ruleset(platform: str) -> Path:
+    candidate = _RULESET_DIR / f"{platform}.yaml"
+    if not candidate.exists():
+        raise SystemExit(
+            f"error: no bundled ruleset for platform '{platform}'. "
+            f"Pass one with --ruleset. Available: "
+            f"{', '.join(p.stem for p in sorted(_RULESET_DIR.glob('*.yaml'))) or 'none'}"
+        )
+    return candidate
+
+
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="audit-report",
+        description="Turn an audit-tools evidence package into a control-mapped report.",
+    )
+    parser.add_argument("package", help="path to an audit-tools output package directory")
+    parser.add_argument(
+        "--ruleset",
+        help="path to a ruleset YAML (default: bundled ruleset for the detected platform)",
+    )
+    parser.add_argument(
+        "--format",
+        default="md",
+        help="comma-separated output formats: md, html, json (default: md)",
+    )
+    parser.add_argument(
+        "--out",
+        help="directory to write report files into (default: print Markdown to stdout)",
+    )
+    parser.add_argument(
+        "--fail-on",
+        choices=["low", "medium", "high", "none"],
+        default="none",
+        help="exit non-zero if any finding fails at or above this severity (default: none)",
+    )
+    parser.add_argument("--version", action="version", version=f"audit-report {__version__}")
+    return parser.parse_args(argv)
+
+
+def _exit_code(findings, threshold: str) -> int:
+    if threshold == "none":
+        return 0
+    floor = _SEVERITY_ORDER[threshold]
+    breached = any(
+        f.status == FAIL and _SEVERITY_ORDER.get(f.rule.severity, 1) >= floor
+        for f in findings
+    )
+    return 1 if breached else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv if argv is not None else sys.argv[1:])
+
+    try:
+        package = load_package(args.package)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    ruleset_path = Path(args.ruleset) if args.ruleset else _default_ruleset(package.platform)
+    ruleset = load_ruleset(ruleset_path)
+
+    findings = evaluate(package, ruleset)
+    report = reporters.build_report(package, findings)
+    formats = [f.strip() for f in args.format.split(",") if f.strip()]
+
+    if args.out:
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for fmt in formats:
+            content = reporters.render(report, fmt)
+            dest = out_dir / f"report.{reporters.EXTENSIONS[fmt]}"
+            dest.write_text(content, encoding="utf-8")
+            print(f"wrote {dest}", file=sys.stderr)
+    else:
+        # No --out: emit the first requested format to stdout.
+        print(reporters.render(report, formats[0]), end="")
+
+    counts = report.counts
+    print(
+        f"{package.platform}/{package.subject}: "
+        f"{counts[FAIL]} failing, {counts['pass']} passing, "
+        f"{counts['not_applicable']} n/a",
+        file=sys.stderr,
+    )
+    return _exit_code(findings, args.fail_on)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

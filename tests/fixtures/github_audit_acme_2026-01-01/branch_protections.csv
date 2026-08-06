@@ -1,0 +1,3 @@
+repo,branch,protected,protection_source,required_reviews,dismiss_stale_reviews,require_code_owner_reviews,required_status_checks,enforce_admins,restrictions
+app,main,True,ruleset,1,True,False,,,
+site,main,False,,,,,,,

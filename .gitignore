@@ -1,0 +1,18 @@
+.venv
+venv
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Generated reports
+/report/
+report.md
+report.html
+report.json
