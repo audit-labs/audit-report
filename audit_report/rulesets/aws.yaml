@@ -4,6 +4,11 @@
 # (aws_audit_<profile>_<date>/). Each rule names a CSV table, a check, and the
 # controls the signal is offered as evidence for. A "fail" means a setting is in
 # a state that does NOT support the control — an auditor still owns the verdict.
+#
+# Provenance and control-mapping rationale: see MAPPING.md. Bump `version` on any
+# change to a rule's controls, checks, or thresholds so reports stay traceable.
+name: AWS ITGC ruleset
+version: "2026.08.0"
 platform: aws
 
 rules:

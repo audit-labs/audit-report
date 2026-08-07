@@ -21,6 +21,8 @@ def to_dict(report: Report) -> dict:
         "platform": pkg.platform,
         "source_package": pkg.path.name,
         "generated_at": report.generated_at,
+        "tool": report.provenance["tool"],
+        "ruleset": report.provenance["ruleset"],
         "summary": report.counts,
         "coverage": report.coverage,
         "findings": [

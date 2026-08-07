@@ -10,6 +10,11 @@
 #   * audit-tools omits a CSV entirely when a collector returns no rows, so an
 #     absent table reports as "not applicable", not "pass". A rule can only
 #     speak to data that was actually collected.
+#
+# Provenance and control-mapping rationale: see MAPPING.md. Bump `version` on any
+# change to a rule's controls, checks, or thresholds so reports stay traceable.
+name: GitLab ITGC ruleset
+version: "2026.08.0"
 platform: gitlab
 
 rules:

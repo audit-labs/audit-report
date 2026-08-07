@@ -42,6 +42,15 @@ def render(report: Report) -> str:
     out.append(f"- **Subject:** {pkg.subject}")
     out.append(f"- **Source package:** `{pkg.path.name}`")
     out.append(f"- **Generated:** {report.generated_at}")
+    prov = report.provenance
+    tool, rs = prov["tool"], prov["ruleset"]
+    out.append(f"- **Tool:** {tool['name']} {tool['version']}")
+    if rs["sha256"]:
+        rs_ver = f" {rs['version']}" if rs["version"] else ""
+        out.append(
+            f"- **Ruleset:** {rs['name']}{rs_ver} "
+            f"(`sha256:{rs['sha256'][:12]}`)"
+        )
     out.append(
         f"- **Result:** {counts[FAIL]} failing · {counts[PASS]} passing · "
         f"{counts[NOT_APPLICABLE]} not applicable"

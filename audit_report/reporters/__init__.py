@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from .. import __version__
 from ..engine import Finding, control_coverage, summarize
 from ..loader import Package
+from ..rules import Ruleset
 from . import html as _html
 from . import json as _json
 from . import markdown as _markdown
@@ -19,6 +21,7 @@ class Report:
     package: Package
     findings: list[Finding]
     generated_at: str
+    ruleset: Ruleset | None = None
 
     @property
     def counts(self) -> dict[str, int]:
@@ -28,11 +31,29 @@ class Report:
     def coverage(self) -> dict[str, dict]:
         return control_coverage(self.findings)
 
+    @property
+    def provenance(self) -> dict[str, dict]:
+        """Tool + ruleset identity, so a report can be tied to what produced it."""
+        rs = self.ruleset
+        return {
+            "tool": {"name": "audit-report", "version": __version__},
+            "ruleset": {
+                "name": rs.name if rs else "",
+                "platform": rs.platform if rs else "",
+                "version": rs.version if rs else "",
+                "sha256": rs.sha256 if rs else "",
+            },
+        }
 
-def build_report(package: Package, findings: list[Finding]) -> Report:
+
+def build_report(
+    package: Package, findings: list[Finding], ruleset: Ruleset | None = None
+) -> Report:
     """Assemble a :class:`Report` with a UTC generation timestamp."""
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    return Report(package=package, findings=findings, generated_at=stamp)
+    return Report(
+        package=package, findings=findings, generated_at=stamp, ruleset=ruleset
+    )
 
 
 RENDERERS = {

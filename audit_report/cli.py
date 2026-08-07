@@ -181,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run_diff(args, package, ruleset, formats)
 
     findings = evaluate(package, ruleset)
-    report = reporters.build_report(package, findings)
+    report = reporters.build_report(package, findings, ruleset)
     _emit(lambda fmt: reporters.render(report, fmt), formats, args.out, "report")
 
     counts = report.counts

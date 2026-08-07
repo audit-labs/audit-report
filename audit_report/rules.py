@@ -17,6 +17,7 @@ Operators (``op``): ``equals``, ``not_equals``, ``is_true``, ``is_false``,
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -49,10 +50,18 @@ class Rule:
 
 @dataclass
 class Ruleset:
-    """A named collection of rules for one platform."""
+    """A named collection of rules for one platform.
+
+    ``version`` and ``sha256`` identify *which* ruleset produced a report, so an
+    auditor can re-perform against the exact mapping used. ``sha256`` is the
+    digest of the ruleset file's bytes as loaded.
+    """
 
     platform: str
     rules: list[Rule]
+    name: str = ""
+    version: str = ""
+    sha256: str = ""
 
 
 def _as_number(value: str) -> float | None:
@@ -115,7 +124,8 @@ def match(condition: dict, row: dict[str, str]) -> bool:
 
 def load_ruleset(path: str | Path) -> Ruleset:
     """Parse a ruleset YAML file into a :class:`Ruleset`, validating each rule."""
-    data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+    text = Path(path).read_text(encoding="utf-8")
+    data = yaml.safe_load(text) or {}
     platform = data.get("platform")
     if not platform:
         raise ValueError(f"{path}: ruleset is missing a 'platform'")
@@ -137,4 +147,10 @@ def load_ruleset(path: str | Path) -> Ruleset:
             raise ValueError(f"{rule.id}: unknown check type {check_type!r}")
         rules.append(rule)
 
-    return Ruleset(platform=platform, rules=rules)
+    return Ruleset(
+        platform=platform,
+        rules=rules,
+        name=data.get("name", platform),
+        version=str(data.get("version", "")),
+        sha256=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+    )

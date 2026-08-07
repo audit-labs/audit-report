@@ -3,6 +3,11 @@
 # Evaluated against an audit-tools GitHub evidence package
 # (github_audit_<org>_<date>/). Complements gh-attest: same spirit of mapping
 # GitHub signals to controls, applied offline to a captured CSV package.
+#
+# Provenance and control-mapping rationale: see MAPPING.md. Bump `version` on any
+# change to a rule's controls, checks, or thresholds so reports stay traceable.
+name: GitHub ITGC ruleset
+version: "2026.08.0"
 platform: github
 
 rules:

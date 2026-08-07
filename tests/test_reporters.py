@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from audit_report import reporters
+from audit_report import __version__, reporters
 from audit_report.cli import main
 from audit_report.engine import evaluate
 from audit_report.loader import load_package
@@ -17,8 +17,9 @@ RULESETS = Path("audit_report/rulesets")
 
 def _report(pkg_name="aws_audit_acme_2026-01-01", ruleset="aws.yaml"):
     pkg = load_package(FIXTURES / pkg_name)
-    findings = evaluate(pkg, load_ruleset(RULESETS / ruleset))
-    return reporters.build_report(pkg, findings)
+    rs = load_ruleset(RULESETS / ruleset)
+    findings = evaluate(pkg, rs)
+    return reporters.build_report(pkg, findings, rs)
 
 
 def test_markdown_render_contains_sections():
@@ -44,6 +45,22 @@ def test_json_render_roundtrips():
     assert data["subject"] == "acme"
     ids = {f["id"]: f["status"] for f in data["findings"]}
     assert ids["aws.iam.console-mfa"] == "fail"
+
+
+def test_json_stamps_tool_and_ruleset_provenance():
+    data = json.loads(reporters.render(_report(), "json"))
+    assert data["tool"] == {"name": "audit-report", "version": __version__}
+    rs = data["ruleset"]
+    assert rs["name"] == "AWS ITGC ruleset"
+    assert rs["platform"] == "aws"
+    assert rs["version"] == "2026.08.0"
+    assert len(rs["sha256"]) == 64  # full SHA-256 hex digest of the ruleset file
+
+
+def test_markdown_shows_ruleset_provenance():
+    md = reporters.render(_report(), "md")
+    assert "**Tool:** audit-report" in md
+    assert "sha256:" in md
 
 
 def test_html_escapes_evidence(tmp_path):

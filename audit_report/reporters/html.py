@@ -90,10 +90,21 @@ def render(report: Report) -> str:
     parts: list[str] = []
 
     parts.append(f"<h1>Evidence Report — {escape(pkg.subject)}</h1>")
+    prov = report.provenance
+    tool, rs = prov["tool"], prov["ruleset"]
+    ruleset_meta = ""
+    if rs["sha256"]:
+        rs_ver = f" {escape(rs['version'])}" if rs["version"] else ""
+        ruleset_meta = (
+            f" · Ruleset <code>{escape(rs['name'])}{rs_ver}</code> "
+            f"<code>sha256:{escape(rs['sha256'][:12])}</code>"
+        )
     parts.append(
         f"<p class='meta'>Platform <code>{escape(pkg.platform)}</code> · "
         f"Source <code>{escape(pkg.path.name)}</code> · "
-        f"Generated {escape(report.generated_at)}</p>"
+        f"Generated {escape(report.generated_at)} · "
+        f"Tool <code>{escape(tool['name'])} {escape(tool['version'])}</code>"
+        f"{ruleset_meta}</p>"
     )
     parts.append(
         "<p class='summary-pills'>"
