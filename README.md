@@ -20,11 +20,10 @@ report you can hand to an auditor or gate a pipeline on.
 ## Install
 
 ```bash
-git clone https://github.com/audit-labs/audit-report
-cd audit-report
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
+pip install audit-report
 ```
+
+To hack on it from a clone instead, see [Development](#development).
 
 ## Usage
 
