@@ -167,6 +167,14 @@ The `--fail-on` exit code (`1` = a finding/regression met the threshold, `2` =
 usage error) lets a workflow separate "the audit found a problem" from "the job
 is misconfigured".
 
+## Stability
+
+`audit-report` is stable as of **v1.0.0** and follows [semantic versioning](https://semver.org).
+The JSON report schema — findings carrying their `controls` and
+`pass` / `fail` / `not_applicable` status — is a committed contract that
+[control-coverage](https://github.com/audit-labs/control-coverage) consumes
+directly; it will not break without a major-version bump.
+
 ## Development
 
 ```bash

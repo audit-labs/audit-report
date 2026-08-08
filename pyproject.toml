@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "audit-report"
-version = "0.1.0"
+version = "1.0.0"
 description = "Turn audit-tools evidence packages into control-mapped, auditor-ready reports."
 readme = "README.md"
 requires-python = ">=3.10"
