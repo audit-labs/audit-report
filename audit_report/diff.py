@@ -185,6 +185,33 @@ def _md_table(rows: list[dict[str, str]]) -> list[str]:
     return out
 
 
+def _render_delta_md(delta, category: str) -> list[str]:
+    rule = delta.rule
+    out = [
+        f"### {rule.title}",
+        "",
+        f"- **Rule:** `{rule.id}` · **Severity:** {rule.severity}",
+        f"- **Controls:** {', '.join(rule.controls) or '—'}",
+        f"- **Change:** {_transition(delta)}",
+    ]
+    if delta.new_reason:
+        out.append(f"- **Now:** {delta.new_reason}")
+    if category == REGRESSED and rule.remediation:
+        out.append(f"- **Remediation:** {rule.remediation.strip()}")
+    out.append("")
+    if delta.evidence_added:
+        out.append("**Newly failing rows:**")
+        out.append("")
+        out.extend(_md_table(delta.evidence_added))
+        out.append("")
+    if delta.evidence_removed:
+        out.append("**No longer failing rows:**")
+        out.append("")
+        out.extend(_md_table(delta.evidence_removed))
+        out.append("")
+    return out
+
+
 def _render_md(diff: DiffReport) -> str:
     counts = diff.counts
     out: list[str] = []
@@ -213,27 +240,7 @@ def _render_md(diff: DiffReport) -> str:
         out.append(f"## {_CATEGORY_HEADING[category]}")
         out.append("")
         for delta in rows:
-            rule = delta.rule
-            out.append(f"### {rule.title}")
-            out.append("")
-            out.append(f"- **Rule:** `{rule.id}` · **Severity:** {rule.severity}")
-            out.append(f"- **Controls:** {', '.join(rule.controls) or '—'}")
-            out.append(f"- **Change:** {_transition(delta)}")
-            if delta.new_reason:
-                out.append(f"- **Now:** {delta.new_reason}")
-            if category == REGRESSED and rule.remediation:
-                out.append(f"- **Remediation:** {rule.remediation.strip()}")
-            out.append("")
-            if delta.evidence_added:
-                out.append("**Newly failing rows:**")
-                out.append("")
-                out.extend(_md_table(delta.evidence_added))
-                out.append("")
-            if delta.evidence_removed:
-                out.append("**No longer failing rows:**")
-                out.append("")
-                out.extend(_md_table(delta.evidence_removed))
-                out.append("")
+            out.extend(_render_delta_md(delta, category))
 
     unchanged = diff.counts[UNCHANGED]
     if unchanged:
@@ -275,6 +282,31 @@ table.added caption { color: #c1272d; } table.removed caption { color: #1a7f37; 
 )
 
 
+def _render_delta_html(delta, category: str) -> str:
+    rule = delta.rule
+    body = [
+        f"<h3>{escape(rule.title)}</h3>",
+        (
+            f"<dl><dt>Rule</dt><dd><code>{escape(rule.id)}</code> · "
+            f"{escape(rule.severity)}</dd>"
+        ),
+        f"<dt>Controls</dt><dd>{escape(', '.join(rule.controls) or '—')}</dd>",
+        f"<dt>Change</dt><dd class='transition'>{escape(_transition(delta))}</dd>",
+    ]
+    if delta.new_reason:
+        body.append(f"<dt>Now</dt><dd>{escape(delta.new_reason)}</dd>")
+    if category == REGRESSED and rule.remediation:
+        body.append(f"<dt>Remediation</dt><dd>{escape(rule.remediation.strip())}</dd>")
+    body.append("</dl>")
+    if delta.evidence_added:
+        body.append(_html_table(delta.evidence_added, "Newly failing rows", "added"))
+    if delta.evidence_removed:
+        body.append(
+            _html_table(delta.evidence_removed, "No longer failing rows", "removed")
+        )
+    return f"<div class='delta {category}'>{''.join(body)}</div>"
+
+
 def _render_html(diff: DiffReport) -> str:
     counts = diff.counts
     parts: list[str] = []
@@ -307,28 +339,7 @@ def _render_html(diff: DiffReport) -> str:
             continue
         parts.append(f"<h2>{escape(_CATEGORY_HEADING[category])}</h2>")
         for delta in rows:
-            rule = delta.rule
-            body = [
-                f"<h3>{escape(rule.title)}</h3>",
-                (
-                    f"<dl><dt>Rule</dt><dd><code>{escape(rule.id)}</code> · "
-                    f"{escape(rule.severity)}</dd>"
-                ),
-                f"<dt>Controls</dt><dd>{escape(', '.join(rule.controls) or '—')}</dd>",
-                f"<dt>Change</dt><dd class='transition'>{escape(_transition(delta))}</dd>",
-            ]
-            if delta.new_reason:
-                body.append(f"<dt>Now</dt><dd>{escape(delta.new_reason)}</dd>")
-            if category == REGRESSED and rule.remediation:
-                body.append(f"<dt>Remediation</dt><dd>{escape(rule.remediation.strip())}</dd>")
-            body.append("</dl>")
-            if delta.evidence_added:
-                body.append(_html_table(delta.evidence_added, "Newly failing rows", "added"))
-            if delta.evidence_removed:
-                body.append(
-                    _html_table(delta.evidence_removed, "No longer failing rows", "removed")
-                )
-            parts.append(f"<div class='delta {category}'>{''.join(body)}</div>")
+            parts.append(_render_delta_html(delta, category))
 
     if counts[UNCHANGED]:
         parts.append(f"<p class='meta'>{counts[UNCHANGED]} rule(s) unchanged.</p>")

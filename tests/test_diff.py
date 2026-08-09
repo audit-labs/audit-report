@@ -67,7 +67,8 @@ def test_diff_render_markdown():
 def test_diff_render_html_self_contained():
     html = diff.render(_build(), "html")
     assert html.startswith("<!doctype html>")
-    assert "http://" not in html and "https://" not in html
+    assert "http://" not in html
+    assert "https://" not in html
     assert "Evidence Drift" in html
 
 

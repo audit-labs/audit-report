@@ -83,7 +83,8 @@ def test_trend_render_markdown():
 def test_trend_render_html_self_contained():
     html = trend.render(_build(), "html")
     assert html.startswith("<!doctype html>")
-    assert "http://" not in html and "https://" not in html
+    assert "http://" not in html
+    assert "https://" not in html
     assert "class='trend'" in html
 
 

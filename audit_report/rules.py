@@ -71,19 +71,19 @@ def _as_number(value: str) -> float | None:
         return None
 
 
-def match(condition: dict, row: dict[str, str]) -> bool:
-    """Return True if *condition* holds for *row*.
+def _compare_numeric(op: str, raw: str, value) -> bool:
+    left, right = _as_number(raw), _as_number(str(value))
+    if left is None or right is None:
+        return False
+    return {
+        "gt": left > right,
+        "gte": left >= right,
+        "lt": left < right,
+        "lte": left <= right,
+    }[op]
 
-    Raises ``ValueError`` on a malformed condition so ruleset bugs surface
-    loudly rather than silently evaluating to False.
-    """
-    if "all" in condition:
-        return all(match(c, row) for c in condition["all"])
-    if "any" in condition:
-        return any(match(c, row) for c in condition["any"])
-    if "not" in condition:
-        return not match(condition["not"], row)
 
+def _match_leaf(condition: dict, row: dict[str, str]) -> bool:
     column = condition.get("column")
     op = condition.get("op")
     if column is None or op is None:
@@ -109,17 +109,24 @@ def match(condition: dict, row: dict[str, str]) -> bool:
         choices = {str(v).strip().lower() for v in (value or [])}
         return (norm in choices) if op == "in" else (norm not in choices)
     if op in ("gt", "gte", "lt", "lte"):
-        left, right = _as_number(raw), _as_number(str(value))
-        if left is None or right is None:
-            return False
-        return {
-            "gt": left > right,
-            "gte": left >= right,
-            "lt": left < right,
-            "lte": left <= right,
-        }[op]
+        return _compare_numeric(op, raw, value)
 
     raise ValueError(f"unknown operator: {op!r}")
+
+
+def match(condition: dict, row: dict[str, str]) -> bool:
+    """Return True if *condition* holds for *row*.
+
+    Raises ``ValueError`` on a malformed condition so ruleset bugs surface
+    loudly rather than silently evaluating to False.
+    """
+    if "all" in condition:
+        return all(match(c, row) for c in condition["all"])
+    if "any" in condition:
+        return any(match(c, row) for c in condition["any"])
+    if "not" in condition:
+        return not match(condition["not"], row)
+    return _match_leaf(condition, row)
 
 
 def load_ruleset(path: str | Path) -> Ruleset:
