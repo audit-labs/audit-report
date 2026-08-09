@@ -35,7 +35,8 @@ def test_html_render_is_self_contained():
     assert html.startswith("<!doctype html>")
     assert "<style>" in html
     # No external resource references.
-    assert "http://" not in html and "https://" not in html
+    assert "http://" not in html
+    assert "https://" not in html
     assert "src=" not in html
 
 
@@ -79,8 +80,9 @@ def test_html_escapes_evidence(tmp_path):
 
 
 def test_unknown_format_raises():
+    report = _report()
     with pytest.raises(ValueError, match="unknown format"):
-        reporters.render(_report(), "pdf")
+        reporters.render(report, "pdf")
 
 
 def test_cli_writes_files_and_exit_code(tmp_path):
