@@ -32,6 +32,8 @@ def to_dict(report: Report) -> dict:
                 "status": f.status,
                 "severity": f.rule.severity,
                 "controls": f.rule.controls,
+                # Added only for typed mappings, so v1 consumers see the same keys as before.
+                **({"control_mappings": f.rule.control_mappings} if f.rule.control_mappings else {}),
                 "reason": f.reason,
                 "evidence": f.evidence,
             }

@@ -149,6 +149,12 @@ rules:
 | `require_any_row` | Passes only if at least one row satisfies `when`. |
 | `assert_row` | Checks each condition in `require` against the first row of a single-row config table. |
 
+**Typed control mappings** — an entry in `controls` may be a mapping instead
+of a code: `{control: ISO:A.5.17, relationship: partial, rationale: "covers MFA
+only", source: "firm methodology 2026"}`. `relationship` is `full` (default) or
+`partial`. JSON reports then carry `control_mappings` per finding, which
+control-coverage uses to report `partially_supported` controls.
+
 **Period checks (schema 2)** — a ruleset with `schema: 2` may give a rule a
 `timestamp` column (ISO date or date-time) and an optional `max_gap_days`.
 `audit_report.periods.check(rows, column, start, end, max_gap_days)` reports

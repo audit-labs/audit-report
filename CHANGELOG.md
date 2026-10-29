@@ -8,6 +8,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Typed control mappings: a rule's `controls` entries may be `{control, relationship (full|partial), rationale, source}`; JSON findings carry `control_mappings` when present.
 - Ruleset `schema: 2`: rules may declare a `timestamp` column and `max_gap_days`; `audit_report.periods.check` reports rows outside a test period, undated rows, and gaps. Schema 1 rulesets are unchanged.
 
 ### Fixed

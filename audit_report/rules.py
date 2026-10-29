@@ -26,6 +26,32 @@ import yaml
 _TRUTHY = {"true", "yes", "1", "y", "t", "enabled", "on"}
 _FALSY = {"false", "no", "0", "n", "f", "disabled", "off", ""}
 
+RELATIONSHIPS = {"full", "partial"}
+
+
+def _controls(entry: dict, path) -> tuple[list[str], dict[str, dict]]:
+    """A rule's `controls`: plain codes, or `{control, relationship, rationale, source}` mappings."""
+    codes: list[str] = []
+    mappings: dict[str, dict] = {}
+    for item in entry.get("controls", []) or []:
+        if isinstance(item, str):
+            codes.append(item)
+            continue
+        if not isinstance(item, dict) or not item.get("control"):
+            raise ValueError(f"{path}: rule {entry.get('id')}: a control mapping needs 'control'")
+        relationship = str(item.get("relationship", "full"))
+        if relationship not in RELATIONSHIPS:
+            raise ValueError(f"{path}: rule {entry.get('id')}: relationship must be full or partial")
+        code = str(item["control"])
+        codes.append(code)
+        mappings[code] = {
+            "relationship": relationship,
+            "rationale": str(item.get("rationale", "")),
+            "source": str(item.get("source", "")),
+        }
+    return codes, mappings
+
+
 VALID_CHECK_TYPES = {
     "fail_rows_where",
     "fail_if_any_rows",
@@ -46,6 +72,7 @@ class Rule:
     controls: list[str] = field(default_factory=list)
     rationale: str = ""
     remediation: str = ""
+    control_mappings: dict[str, dict] = field(default_factory=dict)  # code -> relationship, rationale, source
     timestamp: str | None = None  # schema 2: the column that dates each row
     max_gap_days: int | None = None  # schema 2: longest allowed run of days with no rows
 
@@ -148,6 +175,7 @@ def load_ruleset(path: str | Path) -> Ruleset:
     for entry in data.get("rules", []):
         if schema == 1 and ("timestamp" in entry or "max_gap_days" in entry):
             raise ValueError(f"{path}: rule {entry.get('id')}: 'timestamp' and 'max_gap_days' need 'schema: 2'")
+        codes, mappings = _controls(entry, path)
         gap = entry.get("max_gap_days")
         if gap is not None and (not isinstance(gap, int) or gap < 1 or "timestamp" not in entry):
             raise ValueError(f"{path}: rule {entry.get('id')}: max_gap_days must be a positive integer with a timestamp")
@@ -157,7 +185,8 @@ def load_ruleset(path: str | Path) -> Ruleset:
             table=entry["table"],
             check=entry["check"],
             severity=entry.get("severity", "medium"),
-            controls=entry.get("controls", []),
+            controls=codes,
+            control_mappings=mappings,
             rationale=entry.get("rationale", ""),
             remediation=entry.get("remediation", ""),
             timestamp=entry.get("timestamp"),
