@@ -6,6 +6,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Ruleset `schema: 2`: rules may declare a `timestamp` column and `max_gap_days`; `audit_report.periods.check` reports rows outside a test period, undated rows, and gaps. Schema 1 rulesets are unchanged.
+
 ### Fixed
 
 - CSV rows with fewer cells than the header no longer crash rule evaluation; missing cells load as empty strings.

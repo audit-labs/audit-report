@@ -46,6 +46,8 @@ class Rule:
     controls: list[str] = field(default_factory=list)
     rationale: str = ""
     remediation: str = ""
+    timestamp: str | None = None  # schema 2: the column that dates each row
+    max_gap_days: int | None = None  # schema 2: longest allowed run of days with no rows
 
 
 @dataclass
@@ -62,6 +64,7 @@ class Ruleset:
     name: str = ""
     version: str = ""
     sha256: str = ""
+    schema: int = 1
 
 
 def _as_number(value: str) -> float | None:
@@ -137,8 +140,17 @@ def load_ruleset(path: str | Path) -> Ruleset:
     if not platform:
         raise ValueError(f"{path}: ruleset is missing a 'platform'")
 
+    schema = int(data.get("schema", 1))
+    if schema not in (1, 2):
+        raise ValueError(f"{path}: unsupported ruleset schema {schema}")
+
     rules: list[Rule] = []
     for entry in data.get("rules", []):
+        if schema == 1 and ("timestamp" in entry or "max_gap_days" in entry):
+            raise ValueError(f"{path}: rule {entry.get('id')}: 'timestamp' and 'max_gap_days' need 'schema: 2'")
+        gap = entry.get("max_gap_days")
+        if gap is not None and (not isinstance(gap, int) or gap < 1 or "timestamp" not in entry):
+            raise ValueError(f"{path}: rule {entry.get('id')}: max_gap_days must be a positive integer with a timestamp")
         rule = Rule(
             id=entry["id"],
             title=entry["title"],
@@ -148,6 +160,8 @@ def load_ruleset(path: str | Path) -> Ruleset:
             controls=entry.get("controls", []),
             rationale=entry.get("rationale", ""),
             remediation=entry.get("remediation", ""),
+            timestamp=entry.get("timestamp"),
+            max_gap_days=gap,
         )
         check_type = rule.check.get("type")
         if check_type not in VALID_CHECK_TYPES:
@@ -159,5 +173,6 @@ def load_ruleset(path: str | Path) -> Ruleset:
         rules=rules,
         name=data.get("name", platform),
         version=str(data.get("version", "")),
+        schema=schema,
         sha256=hashlib.sha256(text.encode("utf-8")).hexdigest(),
     )

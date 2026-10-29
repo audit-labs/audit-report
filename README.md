@@ -149,6 +149,14 @@ rules:
 | `require_any_row` | Passes only if at least one row satisfies `when`. |
 | `assert_row` | Checks each condition in `require` against the first row of a single-row config table. |
 
+**Period checks (schema 2)** — a ruleset with `schema: 2` may give a rule a
+`timestamp` column (ISO date or date-time) and an optional `max_gap_days`.
+`audit_report.periods.check(rows, column, start, end, max_gap_days)` reports
+rows dated outside a test period, rows with no readable date, and runs of more
+than `max_gap_days` days with no rows. Schema 1 rulesets are unchanged and
+reject these keys. Joins across tables are not part of the rule schema: an
+analytic produces an ordinary table, and rules evaluate that.
+
 **Condition language** — a condition is a leaf `{column, op, value}`, or one of
 `{all: [...]}`, `{any: [...]}`, `{not: ...}`. Operators: `equals`, `not_equals`,
 `is_true`, `is_false`, `in`, `not_in`, `gt`, `gte`, `lt`, `lte`, `empty`,
