@@ -82,7 +82,8 @@ def load_package(path: str | Path) -> Package:
     tables: dict[str, Table] = {}
     for csv_path in sorted(directory.glob("*.csv")):
         with csv_path.open(newline="", encoding="utf-8") as handle:
-            tables[csv_path.stem] = list(csv.DictReader(handle))
+            # Short rows get "" for missing cells instead of None, so rules can compare them.
+            tables[csv_path.stem] = list(csv.DictReader(handle, restval=""))
 
     if not tables:
         raise ValueError(f"no CSV files found in {directory}")

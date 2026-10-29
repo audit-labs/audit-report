@@ -45,3 +45,20 @@ def test_load_missing_directory_raises():
 def test_load_directory_without_csvs_raises(tmp_path):
     with pytest.raises(ValueError, match="no CSV files"):
         load_package(tmp_path)
+
+
+def test_short_rows_get_empty_cells_and_evaluate(tmp_path):
+    from audit_report.engine import evaluate
+    from audit_report.rules import load_ruleset
+
+    pkg_dir = tmp_path / "aws_audit_acme_2026-01-01"
+    pkg_dir.mkdir()
+    (pkg_dir / "iam_users.csv").write_text(
+        "user,mfa_enabled,console_password\nalice,True,True\nbob\n", encoding="utf-8"
+    )
+    pkg = load_package(pkg_dir)
+    assert pkg.table("iam_users")[1] == {"user": "bob", "mfa_enabled": "", "console_password": ""}
+
+    ruleset = load_ruleset(Path(__file__).parent.parent / "audit_report" / "rulesets" / "aws.yaml")
+    assert evaluate(pkg, ruleset)
+
