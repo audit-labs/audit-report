@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-29
+
 ### Added
 
 - Typed control mappings: a rule's `controls` entries may be `{control, relationship (full|partial), rationale, source}`; JSON findings carry `control_mappings` when present.
@@ -35,5 +37,6 @@ directly; it will not change in a breaking way without a major-version bump.
 - Tool and ruleset provenance stamped into every report.
 - PyPI trusted-publishing release workflow.
 
+[1.1.0]: https://github.com/audit-labs/audit-report/releases/tag/v1.1.0
 [1.0.0]: https://github.com/audit-labs/audit-report/releases/tag/v1.0.0
 [0.1.0]: https://github.com/audit-labs/audit-report/releases/tag/v0.1.0
