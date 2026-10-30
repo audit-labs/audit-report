@@ -34,17 +34,7 @@ def discover(parent: str | Path, subject: str | None = None) -> tuple[str, str, 
     if not directory.is_dir():
         raise ValueError(f"not a directory: {directory}")
 
-    groups: dict[tuple[str, str], list[Path]] = {}
-    for child in sorted(directory.iterdir()):
-        if not child.is_dir() or not any(child.glob("*.csv")):
-            continue
-        platform, subj = detect_platform(child.name)
-        if platform == "unknown":
-            continue
-        if subject and subj != subject:
-            continue
-        groups.setdefault((platform, subj), []).append(child)
-
+    groups = _group_packages(directory, subject)
     if not groups:
         raise ValueError(
             f"no audit-tools packages found under {directory}"
@@ -63,6 +53,19 @@ def discover(parent: str | Path, subject: str | None = None) -> tuple[str, str, 
 
     paths.sort(key=lambda p: (package_date(p.name), p.name))
     return platform, subj, paths
+
+
+def _group_packages(directory: Path, subject: str | None) -> dict[tuple[str, str], list[Path]]:
+    """Group the package folders under *directory* by (platform, subject)."""
+    groups: dict[tuple[str, str], list[Path]] = {}
+    for child in sorted(directory.iterdir()):
+        if not child.is_dir() or not any(child.glob("*.csv")):
+            continue
+        platform, subj = detect_platform(child.name)
+        if platform == "unknown" or (subject and subj != subject):
+            continue
+        groups.setdefault((platform, subj), []).append(child)
+    return groups
 
 
 @dataclass
